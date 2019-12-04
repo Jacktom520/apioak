@@ -1,9 +1,10 @@
 etcd:
   host: "http://127.0.0.1:2379"   # etcd address
-  prefix: "/apioak"               # apioak config prefix
+  prefix: "apioak"                # apioak config prefix
   timeout: 3                      # 3 seconds
 
 plugins:
   - limit-req
   - limit-count
   - limit-conn
+  - proxy-rewrite
