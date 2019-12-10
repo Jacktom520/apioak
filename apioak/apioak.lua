@@ -92,6 +92,7 @@ do
             ngx.exit(404)
         end
     end
+    --sys.upstream.update_upstreams()
 end
 
 return APIOAK
