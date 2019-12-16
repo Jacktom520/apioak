@@ -7,114 +7,29 @@ local pdk = require("apioak.pdk")
 local tonumber = tonumber
 local ngx_crc32_long = ngx.crc32_long
 local ngx_exit = ngx.exit
-local sys = require("apioak.sys")
+local ngx_var = ngx.var
+local upstream = require("apioak.sys.upstream")
 
 local _M = {}
 
 function _M.init_worker()
-    --local balancer = require "ngx.balancer"
-    --local upstream = require "upstream"
-    --local upstream_name = 'mysvr3'
-    --local srvs = upstream.get_servers(upstream_name)
-    --local remote_ip = ngx.var.remote_addr
-    --local hash = ngx.crc32_long(remote_ip);
-    --hash = (hash % 2) + 1
-    --local backend = srvs[hash].addr
-    --local index = string.find(backend, ':')
-    --local host = string.sub(backend, 1, index - 1)
-    --local port = string.sub(backend, index + 1)
-    --ngx.log(ngx.DEBUG, "current peer ", host, ":", port)
-    --balancer.set_current_peer(host, tonumber(port))
-    --if not ok then
-    --    ngx.log(ngx.ERR, "failed to set the current peer: ", err)
-    --    return ngx.exit(500)
-    --end
+
 end
 
-
 function _M.go()
-    local ctx = {}
-    ctx.upstream = {
-        servers = {
-            {
-                host = "127.0.0.1",
-                port = "10111"
-            },
-            {
-                host = "127.0.0.1",
-                port = "10222"
-            },
-        }
-    }
-    ctx.api = {}
-    ctx.api.try_times = 0
-    ctx.api.timeout   = 0
-    ctx.path      = ngx.var.upstream_uri
-    ctx.method    = ngx.req.get_method()
-    ctx.client_ip = ngx.var.remote_addr
-
-    local upstream = ctx.upstream
-    -- 初始化错误重试计数器
-    if not ctx.tries then
-        ctx.tries = 0
-    end
-    -- 获取应用服务器数量
-    local server_count = #upstream.servers
-    if ctx.api.try_times > server_count then
-        --最大重试次数为后端服务器数量减1
-        ctx.api.try_times = server_count - 1
-    end
-    -- 初始化服务器组索引
-    if not ctx.hash then
-        ctx.hash = 1
-    end
-    -- 如果当前是重试的访问
-    if ctx.tries > 0 then
-        local state, code = get_last_failure()
-        -- 失败情况下设置下次读取的后端服务器
-        if ctx.hash >= server_count then
-            ctx.hash = 1
-        else
-            ctx.hash = ctx.hash + 1
-        end
-        pdk.log.error(ctx.backend_host .. ":" .. ctx.backend_port .. " request:" .. state .. " code:" .. code)
-    else
-        -- 把相同IP的请求分配到固定的服务器上
-        local key = ctx.client_ip .. ctx.path .. ctx.method
-        if server_count > 1 then
-            local hash = ngx_crc32_long(key)
-            ctx.hash = (hash % server_count) + 1
-        end
-    end
-    --3个概念，服务器数量，设置的最大重试次数，已经重试的次数
-    --设置失败重试，如果设置的次数大于0  并且重试的次数小于设置的次数  并且后端服务器数据量大于1
-    if ctx.api.try_times > 0 and ctx.tries < ctx.api.try_times and server_count > 1 then
-        set_more_tries(1)
-    end
-    ctx.tries = ctx.tries + 1
-    -- 获取后端应用IP地址
-    ctx.backend_host = upstream.servers[ctx.hash]['host']
-    -- 获取后端应用服务端口
-    ctx.backend_port = upstream.servers[ctx.hash]['port'] or 80
-    local ok, err = set_current_peer(ctx.backend_host, ctx.backend_port)
+    local upstream_name = 'service_name'
+    local srvs = upstream.get_upstreams()
+    local remote_ip = ngx_var.remote_addr
+    local hash = ngx_crc32_long(remote_ip);
+    local server_count = #srvs
+    hash = (hash % server_count) + 1
+    local host = srvs[hash].host
+    local port = srvs[hash].port
+    pdk.log.error("current peer ", host, ":", port)
+    local ok, err = set_current_peer(host, port)
     if not ok then
         pdk.log.error( "failed to set the current peer: ", err)
         ngx_exit(500)
-    end
-    -- 获取超时时间
-    local timeout = tonumber(ctx.api.timeout)
-    if timeout >= 10 or timeout <= 0 then
-        timeout = 10
-    end
-    -- 初始化超时时间
-    local balancer_address = {
-        connect_timeout = 60, --考虑用户网络不好情况，设置大些
-        send_timeout = 60,
-        read_timeout = timeout,
-    }
-    ok, err = set_timeouts(balancer_address.connect_timeout, balancer_address.send_timeout, balancer_address.read_timeout)
-    if not ok then
-        pdk.log.error("could not set upstream timeouts: ", err)
     end
 end
 

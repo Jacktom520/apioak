@@ -1,7 +1,7 @@
 local pdk = require("apioak.pdk")
 local cjson = pdk.json
 local etcd = pdk.etcd.new()
-local shared = ngx.shared
+local shared_cli = pdk.shared.new('sys_upstreams')
 local _M = {}
 
 function _M.update_upstreams()
@@ -20,17 +20,19 @@ function _M.update_upstreams()
     if err then
         return nil, err
     end
-    local list = etcd.get('server_list')
-    return  list
-    --local upstreams = {}
-    --for i, v in ipairs(servers) do
-    --    upstreams[i + 1] = { ip = v.Address, port = v.ServicePort }
-    --end
-    --shared.upstream_list:set("sys_upstreams", cjson.encode(upstreams))
+    local upstream_responses = etcd.get('server_list')
+    local upstream_body = upstream_responses.body
+    local upstream_servers = {}
+    if not upstream_body.node or not upstream_body.node.value then
+        pdk.log.error("[sys.upstream] servers not set")
+    else
+        upstream_servers = cjson.decode(upstream_body.node.value)
+    end
+    shared_cli.set("server_name", upstream_servers, 0)
 end
 
 function _M.get_upstreams()
-    local upstreams_str = ngx.shared.upstream_list:get("sys_upstreams")
+    local upstreams_str = shared_cli.get("server_name")
     return upstreams_str
 end
 
