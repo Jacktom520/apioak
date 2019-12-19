@@ -10,6 +10,7 @@
 - [接口列表](#接口列表)
 - [添加/重新配置接口下插件](#添加/重新配置接口下插件)
 - [删除接口下插件](#删除接口下插件)
+- [接口上下线](#接口上下线)
 
 ### 结构解析
 |名称|类型|必选|说明|
@@ -43,8 +44,8 @@
 |constant_params[].value           |string |否| 常量参数值。|
 |constant_params[].desc            |string |否| 常量参数描述。|
 |response_type                     |string |是| 返回类型：`JSON`、`HTML`、`TEXT`、`XML`、`BINARY`。|
-|response_success                  |string |否| 成功返回类型。|
-|response_fail                     |string |否| 错误返回类型。|
+|response_success                  |string |是| 成功返回类型。|
+|response_fail                     |string |是| 错误返回类型。|
 |response_error_codes              |array  |否| 错误码配置。|
 |response_error_codes[].code       |integer|否| 错误码。|
 |response_error_codes[].msg        |string |否| 错误信息。|
@@ -54,14 +55,14 @@
 
 ### 创建接口
 ```shell
-curl -X POST http://127.0.0.1:10080/apioak/admin/router/{service_id} -d '
+curl -X POST http://127.0.0.1:10080/apioak/admin/router -d '
 {
     "service_id": "00000000000000010080",
     "name": "news list interface",
     "path": "/news",
     "method": "GET",
     "enable_cors": true,
-    "desc":"Query the news list interface by time and column"
+    "desc":"Query the news list interface by time and column",
     "request_params": [
         {
             "name": "time",
@@ -82,40 +83,49 @@ curl -X POST http://127.0.0.1:10080/apioak/admin/router/{service_id} -d '
             "name": "time",
             "position": "Query",
             "type": "string",
-            "desc": "",
+            "desc": ""
         }
-    ]
+    ],
     "constant_params":[
         {
             "name": "gateway",
             "position": "Query",
             "value": true,
-            "desc": "",
+            "desc": ""
         }
     ],
-    "response_type": 'JSON',
-    "response_success": '{"code":200,"message":"OK"}',
-    "response_fail": '{"code":500,"message":"error"}',
+    "response_type": "JSON",
+    "response_success": "{\"code\":200,\"message\":\"OK\"}",
+    "response_fail": "{\"code\":500,\"message\":\"error\"}",
     "response_error_codes":[
         {
             "code": "200",
             "msg": "OK",
-            "desc": "",
+            "desc": ""
         }
     ],
+    "plugins":{
+        "limit-conn": {
+            "conn": 200,
+            "burst": 100,
+            "key": "http_x_real_ip",
+            "default_conn_delay":1
+        }
+    }
+    
 }'
 ```
 
 ### 更新接口
 ```shell
-curl -X POST http://127.0.0.1:10080/apioak/admin/router/{service_id}/{id} -d '
+curl -X POST http://127.0.0.1:10080/apioak/admin/router/{id} -d '
 {
     "service_id": "00000000000000010080",
     "name": "news list interface",
     "path": "/news",
     "method": "GET",
     "enable_cors": true,
-    "desc":"Query the news list interface by time and column"
+    "desc":"Query the news list interface by time and column",
     "request_params": [
         {
             "name": "time",
@@ -136,60 +146,80 @@ curl -X POST http://127.0.0.1:10080/apioak/admin/router/{service_id}/{id} -d '
             "name": "time",
             "position": "Query",
             "type": "string",
-            "desc": "",
+            "desc": ""
         }
-    ]
+    ],
     "constant_params":[
         {
             "name": "gateway",
             "position": "Query",
             "value": true,
-            "desc": "",
+            "desc": ""
         }
     ],
-    "response_type": 'JSON',
-    "response_success": '{"code":200,"message":"OK"}',
-    "response_fail": '{"code":500,"message":"error"}',
+    "response_type": "JSON",
+    "response_success": "{\"code\":200,\"message\":\"OK\"}",
+    "response_fail": "{\"code\":500,\"message\":\"error\"}",
     "response_error_codes":[
         {
             "code": "200",
             "msg": "OK",
-            "desc": "",
+            "desc": ""
         }
     ],
+    "plugins":{
+        "limit-conn": {
+            "conn": 200,
+            "burst": 100,
+            "key": "http_x_real_ip",
+            "default_conn_delay":1
+        }
+    }
+    
 }'
 ```
 
 ### 查询接口
 ```shell
-curl -X GET http://127.0.0.1:10080/apioak/admin/router/{service_id}/{id}
+curl -X GET http://127.0.0.1:10080/apioak/admin/router/{id}?service_id={service_id}
 ```
 
 ### 删除接口
 ```shell
-curl -X DELETE http://127.0.0.1:10080/apioak/admin/router/{service_id}/{id}
+curl -X DELETE http://127.0.0.1:10080/apioak/admin/router/{id}?service_id={service_id}
 ```
 
 ### 接口列表
 ```shell
-curl -X GET http://127.0.0.1:10080/apioak/admin/routers/{service_id}
+curl -X GET http://127.0.0.1:10080/apioak/admin/routers?service_id={service_id}
 ```
 
 ### 添加/重新配置接口下插件
 ```shell
 curl -X POST http://127.0.0.1:10080/apioak/admin/router/{id}/plugin -d '
 {
+    "service_id": "00000000000000010080",
     "name": "limit-conn",
     "config": {
         "conn": 200,
         "burst": 100,
         "key": "http_x_real_ip",
-        "default_conn_delay":1,
+        "default_conn_delay":1
     }
 }'
 ```
 
 ### 删除接口下插件
 ```shell
-curl -X DELETE http://127.0.0.1:10080/apioak/admin/router/{id}/plugin?plugin_name=limit-conn
+curl -X DELETE http://127.0.0.1:10080/apioak/admin/router/{id}/plugin?service_id={service_id}&plugin_name=limit-conn
+```
+
+### 接口上下线
+```shell
+curl -X GET http://127.0.0.1:10080/apioak/admin/router/{id}/push_upstream -d '
+{
+    "service_id": "00000000000000010080",
+    "push_upstream": "beta",
+    "push_status": true
+}'
 ```
