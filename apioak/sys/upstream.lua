@@ -1,7 +1,6 @@
 local pdk = require("apioak.pdk")
 local cjson = pdk.json
-local etcd = pdk.etcd.new()
-local shared_cli = pdk.shared.new('sys_upstreams')
+local etcd = pdk.etcd
 local _M = {}
 
 function _M.update_upstreams()
@@ -28,11 +27,11 @@ function _M.update_upstreams()
     else
         upstream_servers = cjson.decode(upstream_body.node.value)
     end
-    shared_cli.set("server_name", upstream_servers, 0)
+    etcd.set("server_name", upstream_servers, 0)
 end
 
 function _M.get_upstreams()
-    local upstreams_str = shared_cli.get("server_name")
+    local upstreams_str = etcd.get("server_name")
     return upstreams_str
 end
 
