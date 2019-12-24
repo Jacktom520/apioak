@@ -52,6 +52,8 @@ end
 function APIOAK.http_access()
     local ngx_ctx = ngx.ctx
     local oak_ctx = ngx_ctx.oak_ctx
+    local balancer = sys.balancer.go(oak_ctx)
+    ngx.exit(200)
     local routers = sys.router.get()
     local match_ok = routers:dispatch(ngx.var.uri, ngx.req.get_method(), oak_ctx)
     if not match_ok then
